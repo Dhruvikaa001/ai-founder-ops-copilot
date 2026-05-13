@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INDX — AI Founder Ops Copilot</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #f8f8f6;
+    --surface: #ffffff;
+    --border: #e5e4df;
+    --border-light: #f0efe9;
+    --text: #1a1a18;
+    --muted: #6b6b67;
+    --accent: #7F77DD;
+    --accent-light: #EEEDFE;
+    --accent-dark: #534AB7;
+    --green: #3B6D11;
+    --green-bg: #EAF3DE;
+    --red: #A32D2D;
+    --red-bg: #FCEBEB;
+    --amber: #854F0B;
+    --amber-bg: #FAEEDA;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+  /* ── topbar ── */
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 54px; position: sticky; top: 0; z-index: 100; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-mark { background: var(--accent); color: #fff; padding: 4px 9px; border-radius: 7px; font-size: 13px; font-weight: 600; letter-spacing: -0.3px; }
+  .logo-name { font-size: 14px; font-weight: 500; color: var(--text); }
+  .logo-sub { font-size: 12px; color: var(--muted); margin-left: 2px; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .status-pill { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: 4px 10px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #639922; }
+  .dot.off { background: var(--muted); }
+  .mode-badge { font-size: 11px; padding: 3px 8px; border-radius: 20px; background: var(--accent-light); color: var(--accent-dark); font-weight: 500; cursor: pointer; border: 1px solid #AFA9EC; }
+  .mode-badge.ai { background: #EAF3DE; color: #3B6D11; border-color: #C0DD97; }
+
+  /* ── nav tabs ── */
+  .nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; gap: 2px; overflow-x: auto; }
+  .tab { padding: 10px 16px; font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: color 0.15s; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-badge { display: inline-block; background: var(--red-bg); color: var(--red); border-radius: 10px; font-size: 10px; font-weight: 600; padding: 1px 6px; margin-left: 4px; }
+
+  /* ── layout ── */
+  .main { max-width: 1000px; margin: 0 auto; padding: 24px; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── section header ── */
+  .section-head { margin-bottom: 18px; }
+  .section-title { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .section-sub { font-size: 13px; color: var(--muted); }
+
+  /* ── cards ── */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .card + .card { margin-top: 16px; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+
+  /* ── KPI grid ── */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+  .kpi-label { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .kpi-value { font-size: 24px; font-weight: 600; color: var(--text); letter-spacing: -0.5px; }
+  .kpi-change { font-size: 12px; margin-top: 5px; font-weight: 500; }
+  .up { color: var(--green); }
+  .down { color: var(--red); }
+  .neutral { color: var(--muted); }
+  .kpi-card.warn { border-color: #FAC775; background: #FFFBF2; }
+  .kpi-card.danger { border-color: #F09595; background: #FFF7F7; }
+
+  /* ── charts ── */
+  .chart-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .chart-wrap { position: relative; }
+  .chart-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 12px; }
+  .legend { display: flex; gap: 16px; margin-bottom: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+  /* ── upload ── */
+  .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .upload-zone { border: 1.5px dashed var(--border); border-radius: var(--radius); padding: 36px 24px; text-align: center; cursor: pointer; transition: all 0.2s; }
+  .upload-zone:hover { border-color: var(--accent); background: var(--accent-light); }
+  .upload-icon { font-size: 32px; margin-bottom: 10px; }
+  .upload-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .upload-sub { font-size: 12px; color: var(--muted); }
+  .upload-loaded { border-color: var(--green); background: var(--green-bg); }
+  .upload-loaded .upload-icon { filter: none; }
+
+  /* ── buttons ── */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text); transition: all 0.15s; }
+  .btn:hover { background: var(--bg); }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+  .btn-sm { padding: 5px 11px; font-size: 12px; }
+  .btn-row { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+
+  /* ── table ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { font-size: 11px; font-weight: 600; color: var(--muted); text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border-light); color: var(--text); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg); }
+
+  /* ── badges ── */
+  .badge { display: inline-block; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-high { background: var(--red-bg); color: var(--red); }
+  .badge-med { background: var(--amber-bg); color: var(--amber); }
+  .badge-low { background: var(--green-bg); color: var(--green); }
+  .badge-ok { background: var(--green-bg); color: var(--green); }
+  .badge-flagged { background: var(--red-bg); color: var(--red); }
+  .badge-duplicate { background: var(--amber-bg); color: var(--amber); }
+  .badge-cat { background: var(--accent-light); color: var(--accent-dark); }
+
+  /* ── anomaly list ── */
+  .anomaly-item { display: flex; align-items: flex-start; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--border-light); }
+  .anomaly-item:last-child { border-bottom: none; }
+  .anomaly-icon { width: 34px; height: 34px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+  .anomaly-icon.high { background: var(--red-bg); }
+  .anomaly-icon.medium { background: var(--amber-bg); }
+  .anomaly-icon.low { background: var(--green-bg); }
+  .anomaly-desc { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+  .anomaly-sub { font-size: 12px; color: var(--muted); }
+  .anomaly-action { font-size: 12px; color: var(--accent-dark); margin-top: 4px; font-weight: 500; }
+
+  /* ── insights ── */
+  .insight-block { border-left: 3px solid var(--accent); padding: 14px 16px; background: var(--accent-light); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; margin-bottom: 12px; }
+  .insight-block.warn { border-color: #EF9F27; background: var(--amber-bg); }
+  .insight-block.good { border-color: #639922; background: var(--green-bg); }
+  .insight-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .insight-text { font-size: 13px; color: var(--text); line-height: 1.65; }
+  .insight-list { list-style: none; padding: 0; }
+  .insight-list li { font-size: 13px; color: var(--text); padding: 6px 0; border-bottom: 1px solid var(--border-light); display: flex; gap: 8px; align-items: flex-start; }
+  .insight-list li:last-child { border-bottom: none; }
+  .insight-list li::before { content: "→"; color: var(--accent); font-size: 12px; margin-top: 2px; flex-shrink: 0; }
+  .ai-mode-banner { background: var(--green-bg); border: 1px solid #C0DD97; border-radius: var(--radius-sm); padding: 8px 14px; font-size: 12px; color: var(--green); display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .offline-mode-banner { background: var(--amber-bg); border: 1px solid #FAC775; border-radius: var(--radius-sm); padding: 8px 14px; font-size: 12px; color: var(--amber); display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+
+  /* ── Q&A ── */
+  .qa-wrap { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; min-height: 80px; }
+  .qa-bubble { padding: 12px 16px; border-radius: var(--radius); font-size: 13px; line-height: 1.6; max-width: 85%; white-space: pre-line; }
+  .qa-user { background: var(--accent); color: #fff; align-self: flex-end; border-radius: var(--radius) var(--radius) 4px var(--radius); }
+  .qa-ai { background: var(--surface); border: 1px solid var(--border); align-self: flex-start; border-radius: 4px var(--radius) var(--radius) var(--radius); }
+  .qa-input-row { display: flex; gap: 8px; }
+  .qa-input-row input { flex: 1; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); font-size: 13px; color: var(--text); background: var(--surface); outline: none; }
+  .qa-input-row input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(127,119,221,0.15); }
+  .qa-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .chip { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 12px; border: 1px solid var(--border); cursor: pointer; background: var(--surface); color: var(--muted); transition: all 0.15s; }
+  .chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+
+  /* ── alert banner ── */
+  .alert { padding: 10px 16px; border-radius: var(--radius-sm); font-size: 13px; display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .alert-success { background: var(--green-bg); border: 1px solid #C0DD97; color: var(--green); }
+  .alert-warn { background: var(--amber-bg); border: 1px solid #FAC775; color: var(--amber); }
+  .alert-info { background: var(--accent-light); border: 1px solid #AFA9EC; color: var(--accent-dark); }
+
+  /* ── vendor bar ── */
+  .vendor-bar-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+  .vendor-name { font-size: 12px; color: var(--text); width: 130px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vendor-bar { height: 8px; border-radius: 4px; background: var(--accent); transition: width 0.4s; }
+  .vendor-amt { font-size: 12px; color: var(--muted); min-width: 70px; text-align: right; }
+
+  /* ── loading spinner ── */
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── empty state ── */
+  .empty { text-align: center; padding: 48px 24px; color: var(--muted); }
+  .empty-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.4; }
+  .empty-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .empty-sub { font-size: 13px; }
+
+  @media (max-width: 640px) {
+    .chart-row { grid-template-columns: 1fr; }
+    .upload-grid { grid-template-columns: 1fr; }
+    .kpi-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── topbar ── -->
+<div class="topbar">
+  <div class="logo">
+    <span class="logo-mark">indX</span>
+    <span class="logo-name">Ops Copilot</span>
+    <span class="logo-sub">— Finance Intelligence Platform</span>
+  </div>
+  <div class="topbar-right">
+    <div class="status-pill">
+      <span class="dot" id="data-dot" style="background: var(--muted)"></span>
+      <span id="data-status">No data loaded</span>
+    </div>
+    <div class="mode-badge" id="mode-badge" onclick="toggleMode()" title="Click to toggle AI mode">
+      ⚡ Offline mode
+    </div>
+  </div>
+</div>
+
+<!-- ── nav tabs ── -->
+<div class="nav">
+  <div class="tab active" onclick="showTab('upload', this)">📂 Data Upload</div>
+  <div class="tab" onclick="showTab('kpi', this)">📊 KPI Dashboard</div>
+  <div class="tab" onclick="showTab('anomaly', this)">⚠️ Anomalies <span class="tab-badge" id="anomaly-count" style="display:none">0</span></div>
+  <div class="tab" onclick="showTab('invoice', this)">🧾 Invoices</div>
+  <div class="tab" onclick="showTab('insights', this)">✨ AI Insights</div>
+  <div class="tab" onclick="showTab('qa', this)">💬 Founder Q&A</div>
+</div>
+
+<!-- ── main ── -->
+<div class="main">
+
+  <!-- ══ UPLOAD PAGE ══ -->
+  <div class="page active" id="page-upload">
+    <div class="section-head">
+      <div class="section-title">Data Upload</div>
+      <div class="section-sub">Load transaction data and invoices to begin analysis</div>
+    </div>
+
+    <div id="upload-success" style="display:none" class="alert alert-success">
+      ✓ <span id="upload-success-text">Data loaded successfully.</span>
+    </div>
+
+    <div class="upload-grid">
+      <div class="upload-zone" id="csv-zone" onclick="loadSampleData()">
+        <div class="upload-icon">📋</div>
+        <div class="upload-title">CSV Transactions</div>
+        <div class="upload-sub">Click to load 6-month sample dataset<br><small style="color:var(--muted)">(or drag & drop your own CSV)</small></div>
+      </div>
+      <div class="upload-zone" id="pdf-zone" onclick="loadSampleInvoices()">
+        <div class="upload-icon">📄</div>
+        <div class="upload-title">PDF Invoices</div>
+        <div class="upload-sub">Click to load sample invoice set<br><small style="color:var(--muted)">(or drag & drop a real PDF)</small></div>
+      </div>
+    </div>
+
+    <div class="card" id="preview-card" style="display:none">
+      <div class="card-title" style="justify-content: space-between">
+        <span>📋 Transaction preview</span>
+        <span id="row-count" style="font-size:12px; color:var(--muted); font-weight:400"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Date</th><th>Vendor</th><th>Category</th><th>Department</th><th>Amount (S$)</th><th>Type</th>
+          </tr></thead>
+          <tbody id="preview-body"></tbody>
+        </table>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="showTab('kpi', document.querySelectorAll('.tab')[1])">View KPI Dashboard →</button>
+        <button class="btn" onclick="showTab('anomaly', document.querySelectorAll('.tab')[2])">Check Anomalies →</button>
+        <button class="btn" onclick="showTab('insights', document.querySelectorAll('.tab')[4])">Generate AI Insights →</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px; background: var(--accent-light); border-color: #AFA9EC;">
+      <div class="card-title" style="color: var(--accent-dark)">🏗 Production architecture note</div>
+      <div style="font-size:13px; color: var(--accent-dark); line-height:1.7">
+        In a production build: this would be a <strong>Next.js 14 frontend</strong> with TypeScript + shadcn/ui, backed by a <strong>FastAPI microservice</strong> with Pandas pipelines, a <strong>PostgreSQL</strong> database for multi-client data isolation, and a <strong>Celery + Redis</strong> task queue for async report generation. PDF extraction would use a dedicated OCR service (AWS Textract or Azure Form Recognizer). The AI layer would be provider-agnostic (Claude or GPT-4o swappable via environment config).
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ KPI PAGE ══ -->
+  <div class="page" id="page-kpi">
+    <div class="section-head">
+      <div class="section-title">Executive Dashboard</div>
+      <div class="section-sub">6-month financial summary · Acme Startup Pte Ltd</div>
+    </div>
+
+    <div id="kpi-empty" class="empty">
+      <div class="empty-icon">📊</div>
+      <div class="empty-title">No data loaded yet</div>
+      <div class="empty-sub">Go to Data Upload and load the sample dataset to see KPIs</div>
+    </div>
+
+    <div id="kpi-content" style="display:none">
+      <div class="kpi-grid" id="kpi-grid"></div>
+
+      <div class="chart-row">
+        <div class="card">
+          <div class="card-title">Revenue vs Expenses — Monthly (S$)</div>
+          <div class="legend">
+            <span class="legend-item"><span class="legend-dot" style="background:#378ADD"></span>Revenue</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#D85A30"></span>Expenses</span>
+          </div>
+          <div class="chart-wrap" style="height:220px">
+            <canvas id="revChart" role="img" aria-label="Monthly revenue vs expenses bar chart"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Expense Categories</div>
+          <div class="chart-wrap" style="height:180px">
+            <canvas id="catChart" role="img" aria-label="Expense category donut chart"></canvas>
+          </div>
+          <div id="cat-legend" style="margin-top:10px"></div>
+        </div>
+      </div>
+
+      <div class="chart-row">
+        <div class="card">
+          <div class="card-title">Top Vendors by Spend</div>
+          <div id="vendor-bars"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Net Profit / Loss — Monthly (S$)</div>
+          <div class="chart-wrap" style="height:180px">
+            <canvas id="netChart" role="img" aria-label="Monthly net profit line chart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ANOMALY PAGE ══ -->
+  <div class="page" id="page-anomaly">
+    <div class="section-head">
+      <div class="section-title">Anomaly Detection</div>
+      <div class="section-sub">Automated scan for duplicates, spend spikes, and data issues</div>
+    </div>
+
+    <div id="anomaly-empty" class="empty">
+      <div class="empty-icon">⚠️</div>
+      <div class="empty-title">No data loaded yet</div>
+      <div class="empty-sub">Load data on the upload tab to run anomaly detection</div>
+    </div>
+
+    <div id="anomaly-content" style="display:none">
+      <div id="anomaly-summary-row" style="display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap"></div>
+      <div class="card">
+        <div class="card-title">⚠️ Flagged items</div>
+        <div id="anomaly-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ INVOICE PAGE ══ -->
+  <div class="page" id="page-invoice">
+    <div class="section-head">
+      <div class="section-title">Invoice Intelligence</div>
+      <div class="section-sub">Structured extraction from PDF invoices and manual uploads</div>
+    </div>
+
+    <div id="invoice-empty" class="empty">
+      <div class="empty-icon">🧾</div>
+      <div class="empty-title">No invoices loaded</div>
+      <div class="empty-sub">Go to Data Upload and load sample invoices, or drag a PDF</div>
+    </div>
+
+    <div id="invoice-content" style="display:none">
+      <div id="invoice-flags" style="margin-bottom:16px"></div>
+      <div class="card">
+        <div class="card-title" style="justify-content:space-between">
+          <span>🧾 Extracted invoices</span>
+          <span style="font-size:12px; color:var(--muted); font-weight:400">AI-extracted from PDF sources</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Vendor</th><th>Invoice #</th><th>Date</th><th>Due Date</th><th>Amount</th><th>Currency</th><th>Status</th>
+            </tr></thead>
+            <tbody id="invoice-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ INSIGHTS PAGE ══ -->
+  <div class="page" id="page-insights">
+    <div class="section-head">
+      <div class="section-title">AI-Generated Insights</div>
+      <div class="section-sub">CFO-level financial commentary and variance analysis</div>
+    </div>
+
+    <div id="insights-empty" class="empty">
+      <div class="empty-icon">✨</div>
+      <div class="empty-title">No data loaded yet</div>
+      <div class="empty-sub">Load data on the upload tab, then click Generate Insights</div>
+    </div>
+
+    <div id="insights-content" style="display:none">
+      <div id="insights-mode-banner"></div>
+      <button class="btn btn-primary" onclick="generateInsights()" id="insights-btn">
+        ✨ Generate insights
+      </button>
+      <div id="insights-output" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <!-- ══ Q&A PAGE ══ -->
+  <div class="page" id="page-qa">
+    <div class="section-head">
+      <div class="section-title">Founder Q&A</div>
+      <div class="section-sub">Ask operational questions about your financial data</div>
+    </div>
+
+    <div id="qa-empty" class="empty">
+      <div class="empty-icon">💬</div>
+      <div class="empty-title">No data loaded yet</div>
+      <div class="empty-sub">Load data first, then ask questions about your finances</div>
+    </div>
+
+    <div id="qa-content" style="display:none">
+      <div class="alert alert-info" style="margin-bottom:16px">
+        💡 Ask questions about your data — vendors, burn rate, anomalies, month-end close, or department spend.
+      </div>
+      <div class="card">
+        <div class="card-title">Suggested questions</div>
+        <div class="qa-chips">
+          <span class="chip" onclick="askQuestion('Why did expenses increase?')">Why did expenses increase?</span>
+          <span class="chip" onclick="askQuestion('Which vendors are driving the highest spend?')">Top vendors by spend?</span>
+          <span class="chip" onclick="askQuestion('What should I investigate before month-end close?')">Month-end close checklist</span>
+          <span class="chip" onclick="askQuestion('What is our current cash runway?')">Cash runway estimate</span>
+          <span class="chip" onclick="askQuestion('Which departments are overspending?')">Department overspend?</span>
+          <span class="chip" onclick="askQuestion('Are there any suspicious invoices?')">Suspicious invoices?</span>
+          <span class="chip" onclick="askQuestion('What is our current profit margin?')">Profit margin?</span>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="qa-wrap" id="qa-messages">
+          <div class="qa-bubble qa-ai">👋 Hi! I'm your AI finance copilot. Ask me anything about your uploaded data — vendors, burn rate, anomalies, or month-end close items.</div>
+        </div>
+        <div class="qa-input-row">
+          <input type="text" id="qa-input" placeholder="Ask a question about your finances..." onkeydown="if(event.key==='Enter') sendQuestion()" />
+          <button class="btn btn-primary" onclick="sendQuestion()">Send →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+const API = '';
+let aiMode = false;
+let chartsCreated = {};
+
+// ── tab navigation ────────────────────────────────────────────────────────────
+function showTab(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (el) el.classList.add('active');
+  if (name === 'kpi') renderKPI();
+  if (name === 'anomaly') renderAnomalies();
+  if (name === 'invoice') renderInvoices();
+  if (name === 'insights') renderInsightsPage();
+  if (name === 'qa') renderQAPage();
+}
+
+// ── mode toggle ───────────────────────────────────────────────────────────────
+function toggleMode() {
+  aiMode = !aiMode;
+  const badge = document.getElementById('mode-badge');
+  badge.textContent = aiMode ? '🤖 Live AI mode' : '⚡ Offline mode';
+  badge.className = aiMode ? 'mode-badge ai' : 'mode-badge';
+}
+
+// ── load sample data ──────────────────────────────────────────────────────────
+async function loadSampleData() {
+  const zone = document.getElementById('csv-zone');
+  zone.innerHTML = '<div class="upload-icon">⏳</div><div class="upload-title">Loading…</div>';
+  try {
+    const r = await fetch(API + '/api/load-sample', {method:'POST'});
+    const data = await r.json();
+    zone.className = 'upload-zone upload-loaded';
+    zone.innerHTML = `<div class="upload-icon">✅</div><div class="upload-title">Loaded ${data.rows} transactions</div><div class="upload-sub">6 months · 8 categories · anomalies included</div>`;
+    document.getElementById('upload-success').style.display = 'flex';
+    document.getElementById('upload-success-text').textContent = data.message;
+    document.getElementById('data-dot').style.background = '#639922';
+    document.getElementById('data-status').textContent = `${data.rows} transactions loaded`;
+    renderPreview(data.preview);
+  } catch(e) {
+    zone.innerHTML = '<div class="upload-icon">❌</div><div class="upload-title">Error loading data</div><div class="upload-sub">Make sure the server is running</div>';
+  }
+}
+
+// ── load sample invoices ──────────────────────────────────────────────────────
+async function loadSampleInvoices() {
+  const zone = document.getElementById('pdf-zone');
+  zone.innerHTML = '<div class="upload-icon">⏳</div><div class="upload-title">Loading…</div>';
+  try {
+    const r = await fetch(API + '/api/load-sample-invoices', {method:'POST'});
+    const data = await r.json();
+    zone.className = 'upload-zone upload-loaded';
+    zone.innerHTML = `<div class="upload-icon">✅</div><div class="upload-title">Loaded ${data.invoices.length} invoices</div><div class="upload-sub">Includes flagged & duplicate invoices</div>`;
+  } catch(e) {
+    zone.innerHTML = '<div class="upload-icon">❌</div><div class="upload-title">Error</div>';
+  }
+}
+
+// ── preview table ─────────────────────────────────────────────────────────────
+function renderPreview(rows) {
+  const card = document.getElementById('preview-card');
+  card.style.display = 'block';
+  document.getElementById('row-count').textContent = `Showing first ${rows.length} rows`;
+  const tbody = document.getElementById('preview-body');
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.date ? String(r.date).slice(0,10) : '—'}</td>
+      <td>${r.vendor || '—'}</td>
+      <td><span class="badge badge-cat">${r.category || 'Uncategorized'}</span></td>
+      <td>${r.department || '—'}</td>
+      <td style="text-align:right; font-variant-numeric: tabular-nums">${r.transaction_type === 'revenue' ? '<span class="up">+' : '<span class="down">'}S$${Number(r.amount||0).toLocaleString()}</span></td>
+      <td><span class="badge ${r.transaction_type === 'revenue' ? 'badge-ok' : 'badge-cat'}">${r.transaction_type||'—'}</span></td>
+    </tr>
+  `).join('');
+}
+
+// ── KPI dashboard ─────────────────────────────────────────────────────────────
+let kpiData = null;
+
+async function renderKPI() {
+  try {
+    const r = await fetch(API + '/api/kpis');
+    if (!r.ok) { document.getElementById('kpi-empty').style.display = 'block'; document.getElementById('kpi-content').style.display = 'none'; return; }
+    kpiData = await r.json();
+    document.getElementById('kpi-empty').style.display = 'none';
+    document.getElementById('kpi-content').style.display = 'block';
+
+    const fmt = n => 'S$' + Math.round(n).toLocaleString();
+    const grid = document.getElementById('kpi-grid');
+    const runway = kpiData.runway_months;
+    grid.innerHTML = `
+      <div class="kpi-card ${runway < 9 ? 'danger' : runway < 12 ? 'warn' : ''}">
+        <div class="kpi-label">Total Revenue</div>
+        <div class="kpi-value">${fmt(kpiData.revenue)}</div>
+        <div class="kpi-change up">↑ 12% MoM</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Total Expenses</div>
+        <div class="kpi-value">${fmt(kpiData.expenses)}</div>
+        <div class="kpi-change down">↑ 31% MoM</div>
+      </div>
+      <div class="kpi-card ${kpiData.net_profit < 0 ? 'danger' : ''}">
+        <div class="kpi-label">Net Profit</div>
+        <div class="kpi-value">${fmt(Math.abs(kpiData.net_profit))}</div>
+        <div class="kpi-change ${kpiData.net_profit >= 0 ? 'up' : 'down'}">${kpiData.net_profit >= 0 ? '↑ Profitable' : '↓ Net loss'}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Avg Burn Rate</div>
+        <div class="kpi-value">${fmt(kpiData.burn_rate)}<span style="font-size:14px;font-weight:400">/mo</span></div>
+        <div class="kpi-change neutral">6-month average</div>
+      </div>
+      <div class="kpi-card ${runway < 9 ? 'danger' : runway < 12 ? 'warn' : ''}">
+        <div class="kpi-label">Cash Runway</div>
+        <div class="kpi-value">${runway}<span style="font-size:14px;font-weight:400"> mo</span></div>
+        <div class="kpi-change ${runway < 12 ? 'down' : 'up'}">${runway < 12 ? '⚠ Below 12-mo target' : '✓ Healthy runway'}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Top Expense</div>
+        <div class="kpi-value" style="font-size:18px">${kpiData.top_category}</div>
+        <div class="kpi-change neutral">${kpiData.top_category_pct}% of total spend</div>
+      </div>
+    `;
+
+    // Revenue vs Expenses chart
+    const months = kpiData.monthly_trend.map(m => m.month);
+    const revs = kpiData.monthly_trend.map(m => m.revenue);
+    const exps = kpiData.monthly_trend.map(m => m.expenses);
+
+    if (chartsCreated.rev) chartsCreated.rev.destroy();
+    chartsCreated.rev = new Chart(document.getElementById('revChart'), {
+      type: 'bar',
+      data: {
+        labels: months,
+        datasets: [
+          { label: 'Revenue', data: revs, backgroundColor: '#378ADD', borderRadius: 4 },
+          { label: 'Expenses', data: exps, backgroundColor: '#D85A30', borderRadius: 4 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+          y: { grid: { color: '#f0efe9' }, ticks: { callback: v => 'S$' + (v/1000).toFixed(0) + 'K', font: { size: 11 } } }
+        }
+      }
+    });
+
+    // Category donut chart
+    const cats = kpiData.category_breakdown.slice(0, 6);
+    const CAT_COLORS = ['#7F77DD','#D85A30','#378ADD','#639922','#EF9F27','#888780'];
+    if (chartsCreated.cat) chartsCreated.cat.destroy();
+    chartsCreated.cat = new Chart(document.getElementById('catChart'), {
+      type: 'doughnut',
+      data: {
+        labels: cats.map(c => c.category),
+        datasets: [{ data: cats.map(c => c.amount), backgroundColor: CAT_COLORS, borderWidth: 2, borderColor: '#fff' }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '60%',
+        plugins: { legend: { display: false } }
+      }
+    });
+    const totalCatExp = cats.reduce((s, c) => s + c.amount, 0);
+    document.getElementById('cat-legend').innerHTML = cats.map((c, i) => `
+      <div class="legend-item" style="margin-bottom:4px">
+        <span class="legend-dot" style="background:${CAT_COLORS[i]}"></span>
+        <span style="font-size:12px; color:var(--text)">${c.category}</span>
+        <span style="font-size:12px; color:var(--muted); margin-left:auto">${Math.round(c.amount/totalCatExp*100)}%</span>
+      </div>
+    `).join('');
+
+    // Vendor bars
+    const maxVendor = Math.max(...kpiData.top_vendors.map(v => v.amount));
+    document.getElementById('vendor-bars').innerHTML = kpiData.top_vendors.map(v => `
+      <div class="vendor-bar-row">
+        <span class="vendor-name">${v.vendor}</span>
+        <div style="flex:1; background:var(--border-light); border-radius:4px; height:8px; overflow:hidden">
+          <div class="vendor-bar" style="width:${Math.round(v.amount/maxVendor*100)}%; background:var(--accent)"></div>
+        </div>
+        <span class="vendor-amt">S$${v.amount.toLocaleString()}</span>
+      </div>
+    `).join('');
+
+    // Net profit line chart
+    const nets = kpiData.monthly_trend.map(m => m.revenue - m.expenses);
+    if (chartsCreated.net) chartsCreated.net.destroy();
+    chartsCreated.net = new Chart(document.getElementById('netChart'), {
+      type: 'line',
+      data: {
+        labels: months,
+        datasets: [{
+          label: 'Net P&L', data: nets,
+          borderColor: '#639922', backgroundColor: 'rgba(99,153,34,0.08)',
+          fill: true, tension: 0.35, pointRadius: 4, pointBackgroundColor: '#639922'
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+          y: { grid: { color: '#f0efe9' }, ticks: { callback: v => 'S$' + (v/1000).toFixed(0) + 'K', font: { size: 11 } } }
+        }
+      }
+    });
+
+  } catch(e) {
+    document.getElementById('kpi-empty').style.display = 'block';
+    document.getElementById('kpi-content').style.display = 'none';
+  }
+}
+
+// ── anomalies ─────────────────────────────────────────────────────────────────
+let anomalyData = null;
+
+async function renderAnomalies() {
+  try {
+    const r = await fetch(API + '/api/anomalies');
+    if (!r.ok) { document.getElementById('anomaly-empty').style.display = 'block'; return; }
+    anomalyData = await r.json();
+    document.getElementById('anomaly-empty').style.display = 'none';
+    document.getElementById('anomaly-content').style.display = 'block';
+
+    const high = anomalyData.filter(a => a.severity === 'high').length;
+    const med  = anomalyData.filter(a => a.severity === 'medium').length;
+    const low  = anomalyData.filter(a => a.severity === 'low').length;
+
+    const badge = document.getElementById('anomaly-count');
+    badge.textContent = anomalyData.length;
+    badge.style.display = anomalyData.length ? 'inline' : 'none';
+
+    document.getElementById('anomaly-summary-row').innerHTML = `
+      <div class="kpi-card danger" style="flex:1; min-width:120px">
+        <div class="kpi-label">High severity</div>
+        <div class="kpi-value">${high}</div>
+      </div>
+      <div class="kpi-card warn" style="flex:1; min-width:120px">
+        <div class="kpi-label">Medium severity</div>
+        <div class="kpi-value">${med}</div>
+      </div>
+      <div class="kpi-card" style="flex:1; min-width:120px">
+        <div class="kpi-label">Low severity</div>
+        <div class="kpi-value">${low}</div>
+      </div>
+      <div class="kpi-card" style="flex:1; min-width:120px">
+        <div class="kpi-label">Total flagged</div>
+        <div class="kpi-value">${anomalyData.length}</div>
+      </div>
+    `;
+
+    const icons = { high: '🔴', medium: '🟡', low: '🟢' };
+    document.getElementById('anomaly-list').innerHTML = anomalyData.map(a => `
+      <div class="anomaly-item">
+        <div class="anomaly-icon ${a.severity}">${icons[a.severity] || '⚠️'}</div>
+        <div style="flex:1">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px">
+            <span class="badge badge-${a.severity === 'high' ? 'high' : a.severity === 'medium' ? 'med' : 'low'}">${a.severity.toUpperCase()}</span>
+            <span style="font-size:13px; font-weight:600; color:var(--text)">${a.type}</span>
+          </div>
+          <div class="anomaly-desc">${a.description}</div>
+          <div class="anomaly-action">→ ${a.action}</div>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) {
+    document.getElementById('anomaly-empty').style.display = 'block';
+  }
+}
+
+// ── invoices ──────────────────────────────────────────────────────────────────
+async function renderInvoices() {
+  try {
+    const r = await fetch(API + '/api/load-sample-invoices', {method:'POST'});
+    if (!r.ok) { document.getElementById('invoice-empty').style.display = 'block'; return; }
+    const data = await r.json();
+    if (!data.invoices || data.invoices.length === 0) {
+      document.getElementById('invoice-empty').style.display = 'block'; return;
+    }
+    document.getElementById('invoice-empty').style.display = 'none';
+    document.getElementById('invoice-content').style.display = 'block';
+
+    const flagged = data.invoices.filter(i => i.status !== 'ok').length;
+    if (flagged > 0) {
+      document.getElementById('invoice-flags').innerHTML = `
+        <div class="alert alert-warn">⚠️ ${flagged} invoice(s) flagged for review — duplicate or suspicious amounts detected</div>
+      `;
+    }
+
+    document.getElementById('invoice-body').innerHTML = data.invoices.map(inv => `
+      <tr>
+        <td><strong>${inv.vendor}</strong></td>
+        <td style="font-family:monospace; font-size:12px">${inv.invoice_number}</td>
+        <td>${inv.invoice_date}</td>
+        <td>${inv.due_date}</td>
+        <td style="text-align:right; font-variant-numeric:tabular-nums; font-weight:500">
+          ${inv.currency} ${Number(inv.total_amount).toLocaleString()}
+        </td>
+        <td>${inv.currency}</td>
+        <td><span class="badge badge-${inv.status}">${inv.status.toUpperCase()}</span></td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    document.getElementById('invoice-empty').style.display = 'block';
+  }
+}
+
+// ── insights ──────────────────────────────────────────────────────────────────
+function renderInsightsPage() {
+  if (!kpiData) {
+    fetch(API + '/api/kpis').then(r => {
+      if (r.ok) { kpiData = true; document.getElementById('insights-empty').style.display = 'none'; document.getElementById('insights-content').style.display = 'block'; updateInsightsBanner(); }
+      else { document.getElementById('insights-empty').style.display = 'block'; }
+    }).catch(() => { document.getElementById('insights-empty').style.display = 'block'; });
+  } else {
+    document.getElementById('insights-empty').style.display = 'none';
+    document.getElementById('insights-content').style.display = 'block';
+    updateInsightsBanner();
+  }
+}
+
+function updateInsightsBanner() {
+  document.getElementById('insights-mode-banner').innerHTML = aiMode
+    ? '<div class="ai-mode-banner">🤖 Live AI mode — insights will be generated by GPT-4o mini using your data</div>'
+    : '<div class="offline-mode-banner">⚡ Offline mode — using rule-based insight engine (no API key needed). Toggle to Live AI in the top bar for AI-generated commentary.</div>';
+}
+
+async function generateInsights() {
+  const btn = document.getElementById('insights-btn');
+  const out = document.getElementById('insights-output');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Generating…';
+  out.innerHTML = '';
+  try {
+    const r = await fetch(API + '/api/insights', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({mode: aiMode ? 'ai' : 'offline'})
+    });
+    const data = await r.json();
+
+    out.innerHTML = `
+      <div class="insight-block" style="margin-top:0">
+        <div class="insight-title">Executive summary ${data.mode === 'ai' ? '· AI-generated' : '· Rule-based'}</div>
+        <div class="insight-text">${data.executive_summary}</div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">⚠️ Operational concerns</div>
+        <ul class="insight-list">
+          ${(data.concerns || []).map(c => `<li>${c}</li>`).join('')}
+        </ul>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">✅ Recommended actions</div>
+        <ul class="insight-list">
+          ${(data.recommended_actions || []).map(a => `<li>${a}</li>`).join('')}
+        </ul>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">📅 Monthly variance commentary</div>
+        <ul class="insight-list">
+          ${(data.variance_commentary || []).map(v => `<li>${v}</li>`).join('')}
+        </ul>
+      </div>
+    `;
+  } catch(e) {
+    out.innerHTML = '<div class="alert alert-warn">Could not generate insights — ensure the server is running and data is loaded.</div>';
+  }
+  btn.disabled = false;
+  btn.innerHTML = '✨ Regenerate insights';
+}
+
+// ── Q&A ───────────────────────────────────────────────────────────────────────
+function renderQAPage() {
+  fetch(API + '/api/kpis').then(r => {
+    if (r.ok) {
+      document.getElementById('qa-empty').style.display = 'none';
+      document.getElementById('qa-content').style.display = 'block';
+    } else {
+      document.getElementById('qa-empty').style.display = 'block';
+    }
+  }).catch(() => { document.getElementById('qa-empty').style.display = 'block'; });
+}
+
+function askQuestion(q) {
+  document.getElementById('qa-input').value = q;
+  sendQuestion();
+}
+
+async function sendQuestion() {
+  const input = document.getElementById('qa-input');
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = '';
+  const msgs = document.getElementById('qa-messages');
+  msgs.innerHTML += `<div class="qa-bubble qa-user">${q}</div>`;
+  msgs.innerHTML += `<div class="qa-bubble qa-ai" id="qa-typing"><span class="spinner"></span> Thinking…</div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+  try {
+    const r = await fetch(API + '/api/qa', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({question: q, mode: aiMode ? 'ai' : 'offline'})
+    });
+    const data = await r.json();
+    document.getElementById('qa-typing').outerHTML = `<div class="qa-bubble qa-ai">${data.answer}</div>`;
+  } catch(e) {
+    document.getElementById('qa-typing').outerHTML = `<div class="qa-bubble qa-ai">Error connecting to server. Make sure the backend is running.</div>`;
+  }
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ── init ──────────────────────────────────────────────────────────────────────
+fetch(API + '/api/status').then(r => r.json()).then(s => {
+  if (s.data_loaded) {
+    document.getElementById('data-dot').style.background = '#639922';
+    document.getElementById('data-status').textContent = `${s.row_count} transactions loaded`;
+  }
+}).catch(() => {});
+</script>
+</body>
+</html>

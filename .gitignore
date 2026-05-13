@@ -1,0 +1,41 @@
+# Environment variables (NEVER push API keys)
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+eggs/
+*.egg
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Database files (if using local SQLite with real data)
+*.db
+!data/sample.db
+
+# Logs
+*.log
+
+# Uploaded files (user data)
+uploads/
+temp/
